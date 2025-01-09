@@ -5,12 +5,14 @@ import numpy as np
 from torchvision import transforms
 from dataset import FreeShoundTrainDataset
 from sklearn.preprocessing import LabelEncoder
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, random_split
 from torch import nn, optim
 import torch
 from models import Model, Classifier
 from sklearn.metrics import accuracy_score
 from fastprogress.fastprogress import master_bar, progress_bar
+from sklearn.model_selection import train_test_split
+from engine import train_model
 
 batch_size = 8
 lr = 1e-3
@@ -60,11 +62,15 @@ if __name__ == "__main__":
     y_train = train_df.iloc[:, 1:]
 
     # create custom dataset and dataloader
-    train_ds = FreeShoundTrainDataset(
+    ds = FreeShoundTrainDataset(
         processed_train, y_train, trainsforms_dict['train'])
     if debug:
-        train_ds = Subset(train_ds, range(100))
+        ds = Subset(ds, range(100))
+    train_size = int(len(ds) * 0.8)
+    valid_size = len(ds) - train_size
+    train_ds, valid_ds = random_split(ds, [train_size, valid_size])
     train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    valid_dl = DataLoader(valid_ds, batch_size=batch_size, shuffle=False)
 
     # load model
     # model = Model(num_classes=len(le.classes_), pretrained=True)
@@ -75,24 +81,17 @@ if __name__ == "__main__":
     scheduler = optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=tmax, eta_min=eta_min)
 
-    mb = master_bar(range(num_epochs))
-    for epoch in mb:
-        model.train()
-        running_loss = 0
-        running_acc = 0
-        for xb, yb in progress_bar(train_dl, parent=mb):
-            logits = model(xb.to(device))
-            loss = loss_fn(logits, yb.to(device))
-            running_loss += loss.item()
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+    settings = {
+        'model': model,
+        'train_dl': train_dl,
+        'valid_dl': valid_dl,
+        'loss_fn': loss_fn,
+        'num_epochs': num_epochs,
+        'optimizer': optimizer,
+        'scheduler': scheduler,
+        'device': device
+    }
+    train_model(**settings)
 
-            predictions = (torch.sigmoid(logits) > 0.5).float()
-            accuracy = (predictions == yb).float().mean()
-            running_acc += accuracy.item()
 
-        scheduler.step()
-        mb.write(
-            f"Epoch {epoch} | Loss: {running_loss/len(train_dl):.3f} | Accuracy: {running_acc/len(train_dl):.2f}")
     torch.save(model.state_dict(), 'model.pt')
