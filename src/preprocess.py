@@ -12,17 +12,12 @@ import librosa.display
 import random
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--train_df_path', type=str,
-                    default="data/train_curated.csv")
-parser.add_argument('--test_dir', type=str,
-                    default="data/test_files/")
-parser.add_argument('--train_dir', type=str,
-                    default="data/train_curated/")
+parser.add_argument("--train_df_path", type=str, default="data/train_curated.csv")
+parser.add_argument("--test_dir", type=str, default="data/test_files/")
+parser.add_argument("--train_dir", type=str, default="data/train_curated/")
 
-parser.add_argument('--train_output_path', type=str,
-                    default="./data/mels_train.pkl")
-parser.add_argument('--test_output_path', type=str,
-                    default="./data/mels_test.pkl")
+parser.add_argument("--train_output_path", type=str, default="./data/mels_train.pkl")
+parser.add_argument("--test_output_path", type=str, default="./data/mels_test.pkl")
 
 args = parser.parse_args()
 
@@ -43,7 +38,7 @@ def read_audio(conf, pathname, trim_long_data):
     # make it unified length to conf.samples
     if len(y) > conf.samples:  # long enough
         if trim_long_data:
-            y = y[0:0 + conf.samples]
+            y = y[0 : 0 + conf.samples]
     else:  # pad blank
         leny = len(y)
         padding = conf.samples - len(y)  # add padding at both ends
@@ -54,17 +49,30 @@ def read_audio(conf, pathname, trim_long_data):
 
 def audio_to_melspectrogram(conf, audio):
     spectrogram = librosa.feature.melspectrogram(
-        y=audio, sr=conf.sampling_rate, n_mels=conf.n_mels, hop_length=conf.hop_length, n_fft=conf.n_fft, fmin=conf.fmin, fmax=conf.fmax)
+        y=audio,
+        sr=conf.sampling_rate,
+        n_mels=conf.n_mels,
+        hop_length=conf.hop_length,
+        n_fft=conf.n_fft,
+        fmin=conf.fmin,
+        fmax=conf.fmax,
+    )
     spectrogram = librosa.power_to_db(spectrogram)
     spectrogram = spectrogram.astype(np.float32)
     return spectrogram
 
 
-def show_melspectrogram(conf, mels, title='Log-frequency power spectrogram'):
-    librosa.display.specshow(mels, x_axis='time', y_axis='mel',
-                             sr=conf.sampling_rate, hop_length=conf.hop_length,
-                             fmin=conf.fmin, fmax=conf.fmax)
-    plt.colorbar(format='%+2.0f dB')
+def show_melspectrogram(conf, mels, title="Log-frequency power spectrogram"):
+    librosa.display.specshow(
+        mels,
+        x_axis="time",
+        y_axis="mel",
+        sr=conf.sampling_rate,
+        hop_length=conf.hop_length,
+        fmin=conf.fmin,
+        fmax=conf.fmax,
+    )
+    plt.colorbar(format="%+2.0f dB")
     plt.title(title)
     plt.show()
 
@@ -83,7 +91,7 @@ class conf:
     fmax = sampling_rate // 2
     n_mels = 128
     n_fft = n_mels * 20
-    padmode = 'constant'
+    padmode = "constant"
     samples = sampling_rate * duration
 
 
@@ -97,12 +105,14 @@ def set_fastai_random_seed(seed=42):
     random.seed(seed)
     # pytorch RNGs
     import torch
+
     torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
     # numpy RNG
     import numpy as np
+
     np.random.seed(seed)
 
 
@@ -134,8 +144,7 @@ def mono_to_color(X, mean=None, std=None, norm_max=None, norm_min=None, eps=1e-6
 def convert_wav_to_image(df, source):
     X = []
     for i, row in tqdm(df.iterrows(), total=len(df)):
-        x = read_as_melspectrogram(
-            conf, source / str(row.fname), trim_long_data=False)
+        x = read_as_melspectrogram(conf, source / str(row.fname), trim_long_data=False)
         x_color = mono_to_color(x)
         X.append(x_color)
     return X
@@ -145,13 +154,13 @@ def save_as_pkl_binary(obj, filename):
     """Save object as pickle binary file.
     Thanks to https://stackoverflow.com/questions/19201290/how-to-save-a-dictionary-to-a-file/32216025
     """
-    with open(filename, 'wb') as f:
+    with open(filename, "wb") as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 
 def load_pkl(filename):
     """Load pickle object from file."""
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         return pickle.load(f)
 
 
@@ -161,7 +170,7 @@ conf = get_default_conf()
 def convert_dataset(df, source_folder, filename):
     X = convert_wav_to_image(df, source=source_folder)
     save_as_pkl_binary(X, filename)
-    print(f'Created {filename}')
+    print(f"Created {filename}")
     return X
 
 

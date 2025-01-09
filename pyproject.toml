@@ -12,4 +12,5 @@ dependencies = [
     "torch>=2.5.1",
     "torchvision>=0.20.1",
     "fastprogress>=1.0.3",
+    "black>=24.10.0",
 ]
